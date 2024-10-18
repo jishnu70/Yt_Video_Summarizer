@@ -1,0 +1,199 @@
+<!-- templates/youtube_summarizer/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Summarizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f2f5;
+      }
+
+      .container {
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh; /* Allow for scrolling if content is too tall */
+        overflow-y: auto; /* Enable vertical scrolling */
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      label {
+        font-size: 1.1rem;
+        color: #333;
+      }
+
+      input[type="text"] {
+        padding: 10px;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      button {
+        padding: 10px;
+        font-size: 1rem;
+        color: white;
+        background-color: #007bff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      .result {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        margin-top: 20px;
+        overflow-wrap: break-word; /* Prevent long words from breaking the layout */
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 4px solid #007bff;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-text {
+        text-align: center;
+        margin-top: 10px;
+        font-style: italic;
+      }
+
+      #error {
+        color: red;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>YouTube Video Summarizer</h1>
+
+      <!-- Form to enter YouTube URL -->
+      <form id="youtubeForm">
+        {% csrf_token %}
+        <label for="youtube_url">Enter YouTube URL:</label>
+        <input
+          type="text"
+          id="youtube_url"
+          name="youtube_url"
+          placeholder="https://www.youtube.com/watch?v=example"
+          required
+        />
+        <button type="submit">Summarize Video</button>
+      </form>
+
+      <!-- Section to show loading state -->
+      <div id="loading" style="display: none">
+        <div class="spinner"></div>
+        <p class="loading-text">Processing... Please wait.</p>
+      </div>
+
+      <!-- Section to show results -->
+      <div id="result" class="result" style="display: none">
+        <h2>Summary</h2>
+        <p id="summary"></p>
+      </div>
+
+      <!-- Section to show error messages -->
+      <p id="error" style="display: none"></p>
+    </div>
+
+    <script>
+      const form = document.getElementById("youtubeForm");
+      const resultDiv = document.getElementById("result");
+      const loadingText = document.getElementById("loading");
+      const summaryElem = document.getElementById("summary");
+      const errorElem = document.getElementById("error");
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        // Clear previous results or errors
+        resultDiv.style.display = "none";
+        errorElem.style.display = "none";
+        loadingText.style.display = "block";
+
+        const youtubeUrl = document.getElementById("youtube_url").value;
+
+        axios
+          .post(
+            "{% url 'process_youtube' %}",
+            {
+              youtube_url: youtubeUrl,
+            },
+            {
+              headers: {
+                "X-CSRFToken": "{{ csrf_token }}", // Include CSRF token in the header
+              },
+            }
+          )
+          .then((response) => {
+            // Hide loading text
+            loadingText.style.display = "none";
+
+            // Show results
+            summaryElem.innerText = response.data.Summary;
+            resultDiv.style.display = "block";
+          })
+          .catch((error) => {
+            // Hide loading text
+            loadingText.style.display = "none";
+
+            if (
+              error.response &&
+              error.response.data &&
+              error.response.data.error
+            ) {
+              errorElem.innerText = error.response.data.error; // Show the error message from the server
+            } else {
+              errorElem.innerText = "There was an error processing the video."; // Fallback for unexpected errors
+            }
+            errorElem.style.display = "block";
+          });
+      });
+    </script>
+  </body>
+</html>
